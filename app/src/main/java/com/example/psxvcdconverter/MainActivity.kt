@@ -48,9 +48,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-            // Keep screen on so conversion doesn't die if phone locks
-    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        // Keep screen on so conversion doesn't die if phone locks
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Bind UI elements
         statusText = findViewById(R.id.status_text)
@@ -112,6 +112,11 @@ class MainActivity : AppCompatActivity() {
     private fun startConversion(rootDoc: DocumentFile, cueDoc: DocumentFile, allFiles: Array<DocumentFile>) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // DEFINE baseName HERE so it is definitely available
+                // Also sanitize it to remove illegal characters
+                val rawName = cueDoc.name?.substringBeforeLast(".") ?: "game"
+                val baseName = rawName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                
                 // UI Update: Start
                 withContext(Dispatchers.Main) {
                     convertButton.isEnabled = false
@@ -132,9 +137,8 @@ class MainActivity : AppCompatActivity() {
                     throw Exception("Failed to create 'VCD' subfolder. Check permissions.")
                 }
 
-                // Determine filename (Game.cue -> Game.VCD)
-                val cleanName = baseName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                val finalFileName = "${cleanName}.VCD"
+                // Determine filename using the baseName defined at the top
+                val finalFileName = "${baseName}.VCD"
                 
                 // Delete existing file if it exists (to allow overwriting)
                 vcdFolder.findFile(finalFileName)?.delete()
@@ -266,4 +270,3 @@ class MainActivity : AppCompatActivity() {
         return CueData(binUris, tracks)
     }
 }
-
