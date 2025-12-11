@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/psx_dark_grey">
+    android:background="#252525">
 
     <!-- Top Bar -->
     <LinearLayout
@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="@color/psx_black"
+        android:background="#000000"
         android:gravity="center_vertical">
 
         <TextView
@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="No Folder Selected"
-            android:textColor="@color/white"
+            android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:maxLines="1"
             android:ellipsize="middle"/>
@@ -31,8 +31,8 @@
             android:layout_height="40dp"
             android:text="Change"
             android:textSize="12sp"
-            android:backgroundTint="@color/psx_blue"
-            android:textColor="@color/white"/>
+            android:backgroundTint="#003DA5"
+            android:textColor="#FFFFFF"/>
     </LinearLayout>
 
     <!-- Status & Progress (Visible during conversion) -->
@@ -50,7 +50,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Processing..."
-            android:textColor="@color/white"
+            android:textColor="#FFFFFF"
             android:gravity="center"/>
 
         <ProgressBar
@@ -61,7 +61,7 @@
             android:layout_marginTop="8dp"
             android:max="100"
             android:progress="0"
-            android:progressTint="@color/psx_blue"/>
+            android:progressTint="#003DA5"/>
     </LinearLayout>
 
     <!-- Game List Header -->
@@ -70,7 +70,7 @@
         android:layout_height="wrap_content"
         android:text="Games Found"
         android:padding="16dp"
-        android:textColor="@color/psx_light_grey"
+        android:textColor="#CCCCCC"
         android:textStyle="bold"/>
 
     <!-- Scrollable List of Games -->
