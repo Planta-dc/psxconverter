@@ -3,40 +3,87 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp">
+    android:background="@color/psx_dark_grey">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="PSX to VCD Converter"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
-
-    <Button
-        android:id="@+id/convert_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Select Game Folder" />
-
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Ready"
-        android:textAlignment="center"/>
-
-    <ProgressBar
-        android:id="@+id/progress_bar"
-        style="?android:attr/progressBarStyleHorizontal"
+    <!-- Top Bar -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:indeterminate="false"
-        android:max="100"
-        android:progress="0"
-        android:visibility="invisible"/>
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="@color/psx_black"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/folder_path_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="No Folder Selected"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:maxLines="1"
+            android:ellipsize="middle"/>
+
+        <Button
+            android:id="@+id/change_folder_button"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="Change"
+            android:textSize="12sp"
+            android:backgroundTint="@color/psx_blue"
+            android:textColor="@color/white"/>
+    </LinearLayout>
+
+    <!-- Status & Progress (Visible during conversion) -->
+    <LinearLayout
+        android:id="@+id/progress_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:background="#333333">
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Processing..."
+            android:textColor="@color/white"
+            android:gravity="center"/>
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@color/psx_blue"/>
+    </LinearLayout>
+
+    <!-- Game List Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Games Found"
+        android:padding="16dp"
+        android:textColor="@color/psx_light_grey"
+        android:textStyle="bold"/>
+
+    <!-- Scrollable List of Games -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/games_list_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp"/>
+    </ScrollView>
 
 </LinearLayout>
