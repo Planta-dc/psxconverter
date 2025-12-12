@@ -35,7 +35,7 @@
             android:textColor="#FFFFFF"/>
     </LinearLayout>
 
-    <!-- Status & Progress (Visible during conversion) -->
+    <!-- Status & Progress -->
     <LinearLayout
         android:id="@+id/progress_container"
         android:layout_width="match_parent"
@@ -64,7 +64,7 @@
             android:progressTint="#003DA5"/>
     </LinearLayout>
 
-    <!-- Header Area -->
+    <!-- Header Area with Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -80,7 +80,18 @@
             android:textColor="#CCCCCC"
             android:textStyle="bold"/>
 
-        <!-- NEW: Convert All Button -->
+        <!-- REFRESH BUTTON -->
+        <Button
+            android:id="@+id/refresh_button"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="↻"
+            android:textSize="18sp"
+            android:backgroundTint="#444444"
+            android:textColor="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- CONVERT ALL BUTTON -->
         <Button
             android:id="@+id/convert_all_button"
             android:layout_width="wrap_content"
