@@ -174,43 +174,48 @@ class MainActivity : AppCompatActivity() {
         }
 
         for (game in games) {
-            // Container for each game row
+            // 1. The Box (Card)
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(24, 24, 24, 24)
-                setBackgroundColor(Color.parseColor("#252525")) // Dark Grey Row
+                setPadding(32, 32, 32, 32) // More padding inside the box
+                setBackgroundColor(Color.parseColor("#252525")) // Dark Grey background
+                
+                // Add margin (gap) between boxes to make them easier to distinguish
                 val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                params.setMargins(0, 0, 0, 4) // Spacing between rows
+                params.setMargins(0, 0, 0, 16) // 16px gap at the bottom
                 layoutParams = params
             }
 
-            // Game Title
+            // 2. The Title Text
             val titleView = TextView(this).apply {
-                text = game.name
-                textSize = 18f
-                setTextColor(Color.WHITE)
-                // If converted, show visual indicator
-                if (game.isConverted) {
-                    text = "✓ ${game.name}"
-                    setTextColor(Color.parseColor("#00FF00")) // Bright Green
-                }
+                // If converted, show a checkmark, otherwise just the name
+                text = if (game.isConverted) "✓ ${game.name}" else game.name
+                
+                // SMALLER FONT (Easier to read long titles)
+                textSize = 16f 
+                
+                // Green if converted, White if new
+                setTextColor(if (game.isConverted) Color.parseColor("#00FF00") else Color.WHITE)
             }
 
-            // Status Subtitle
+            // 3. The Status Text (Subtitle)
             val statusView = TextView(this).apply {
-                text = if (game.isConverted) "Status: Converted" else "Status: Ready"
-                textSize = 12f
+                text = if (game.isConverted) "Status: Already Converted" else "Status: Ready"
+                textSize = 12f // Keep small
                 setTextColor(Color.LTGRAY)
-                setPadding(0, 4, 0, 16)
+                setPadding(0, 8, 0, 24) // Spacing below title
             }
 
-            // Action Button
+            // 4. The Button
             val actionButton = Button(this).apply {
-                text = if (game.isConverted) "Re-Convert" else "Convert"
-                // Different color for already converted games
-                val bgData = if (game.isConverted) Color.DKGRAY else Color.parseColor("#003DA5") // PSX Blue
-                setBackgroundColor(bgData)
+                text = "CONVERT" // Always just say Convert
+                textSize = 14f
+                
+                // Make button darker if already done (visual hint), but keep it blue otherwise
+                val btnColor = if (game.isConverted) Color.DKGRAY else Color.parseColor("#003DA5")
+                setBackgroundColor(btnColor)
                 setTextColor(Color.WHITE)
+                
                 setOnClickListener {
                     startConversion(rootDoc, game.cueFile, allFiles)
                 }
