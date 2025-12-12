@@ -43,7 +43,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
 
     // Helper Data Class
-    // cueFile is nullable (?) because it might be missing if the user deleted the source
     data class GameEntry(
         val name: String, 
         val cueFile: DocumentFile?, 
@@ -166,7 +165,8 @@ class MainActivity : AppCompatActivity() {
             val cueFiles = files.filter { it.name?.endsWith(".cue", ignoreCase = true) == true }
             
             // B. Find Converted Files (VCD) inside VCD folder
-            val vcdFiles = vcdFolder?.listFiles()?.filter { it.name?.endsWith(".VCD", ignoreCase = true) == true } ?: emptyArray()
+            // FIX: Use emptyList() instead of emptyArray() to match filter return type
+            val vcdFiles = vcdFolder?.listFiles()?.filter { it.name?.endsWith(".VCD", ignoreCase = true) == true } ?: emptyList()
 
             val combinedList = mutableListOf<GameEntry>()
             val processedNames = mutableSetOf<String>()
