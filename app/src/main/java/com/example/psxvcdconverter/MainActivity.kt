@@ -29,30 +29,37 @@ import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
 
-    // UI Elements defined in the XML
+    // UI Elements
     private lateinit var folderPathText: TextView
     private lateinit var changeFolderButton: Button
+    private lateinit var convertAllButton: Button
     private lateinit var progressContainer: LinearLayout
     private lateinit var statusText: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var gamesListContainer: LinearLayout
 
-    // Dependencies
     private val vcdConverter by lazy { VCDConverter(contentResolver) }
     private lateinit var prefs: SharedPreferences
 
-    // Simple data class to hold game status before rendering
+    // Helper data class
     data class GameEntry(val name: String, val cueFile: DocumentFile, val isConverted: Boolean)
 
-    // Launcher for the Folder Picker
+    // Variables for Batch Processing
+    private var currentGameList: List<GameEntry> = emptyList()
+    private var currentRootDoc: DocumentFile? = null
+    private var currentAllFiles: Array<DocumentFile> = emptyArray()
+
     private val directoryPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.also { uri ->
-                // Crucial: Persist permission so we can access this folder after app restart
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    // Ignore if permission persists failed, usually happens if already granted
+                }
                 saveDefaultFolder(uri)
                 loadGamesFromFolder(uri)
             }
@@ -63,18 +70,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Prevent phone from sleeping during long conversions
+        // Keep screen on
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Bind Views
         folderPathText = findViewById(R.id.folder_path_text)
         changeFolderButton = findViewById(R.id.change_folder_button)
+        convertAllButton = findViewById(R.id.convert_all_button)
         progressContainer = findViewById(R.id.progress_container)
         statusText = findViewById(R.id.status_text)
         progressBar = findViewById(R.id.progress_bar)
         gamesListContainer = findViewById(R.id.games_list_container)
 
-        // Initialize Preferences to store folder path
         prefs = getSharedPreferences("psx_prefs", Context.MODE_PRIVATE)
 
         changeFolderButton.setOnClickListener {
@@ -82,8 +89,11 @@ class MainActivity : AppCompatActivity() {
             intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             directoryPickerLauncher.launch(intent)
         }
+        
+        convertAllButton.setOnClickListener {
+            promptConvertAll()
+        }
 
-        // Check if we have a folder saved from last time
         checkSavedFolder()
     }
 
@@ -96,7 +106,6 @@ class MainActivity : AppCompatActivity() {
         if (uriString != null) {
             val uri = Uri.parse(uriString)
             try {
-                // Verify we still have access
                 val doc = DocumentFile.fromTreeUri(this, uri)
                 if (doc != null && doc.isDirectory) {
                     loadGamesFromFolder(uri)
@@ -104,25 +113,24 @@ class MainActivity : AppCompatActivity() {
                     folderPathText.text = "Saved folder inaccessible."
                 }
             } catch (e: Exception) {
-                folderPathText.text = "Permission lost. Please select folder again."
+                folderPathText.text = "Permission lost. Select folder again."
             }
         }
     }
 
-    /**
-     * Scans the folder for CUE files and checks conversion status
-     */
     private fun loadGamesFromFolder(uri: Uri) {
         lifecycleScope.launch(Dispatchers.IO) {
             val rootDoc = DocumentFile.fromTreeUri(this@MainActivity, uri) ?: return@launch
+            currentRootDoc = rootDoc // Save for batch
             
             withContext(Dispatchers.Main) {
-                folderPathText.text = rootDoc.uri.path
+                // Clean path display
+                folderPathText.text = "Folder: ${rootDoc.name}"
                 gamesListContainer.removeAllViews()
+                convertAllButton.visibility = View.GONE
                 
-                // Show temporary loading text
                 val loadingView = TextView(this@MainActivity).apply { 
-                    text = "Scanning directory..."
+                    text = "Scanning..."
                     setTextColor(Color.WHITE)
                     setPadding(32, 32, 32, 32)
                     gravity = Gravity.CENTER
@@ -130,25 +138,21 @@ class MainActivity : AppCompatActivity() {
                 gamesListContainer.addView(loadingView)
             }
 
-            // Look for the VCD output folder to check status
             val vcdFolder = rootDoc.findFile("VCD")
-            
-            // Find all files in one go to minimize I/O calls
             val files = rootDoc.listFiles()
+            currentAllFiles = files // Save for batch
+            
             val cueFiles = files.filter { it.name?.endsWith(".cue", ignoreCase = true) == true }
 
-            // Map files to GameEntries
             val gameEntries = cueFiles.map { cueFile ->
                 val baseName = cueFile.name?.substringBeforeLast(".") ?: "game"
-                // Sanitize name to match how we save it
                 val cleanName = baseName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 val vcdName = "${cleanName}.VCD"
-                
-                // Check if the VCD file already exists
                 val isConverted = vcdFolder?.findFile(vcdName) != null
-                
                 GameEntry(baseName, cueFile, isConverted)
             }.sortedBy { it.name }
+
+            currentGameList = gameEntries // Save for batch
 
             withContext(Dispatchers.Main) {
                 populateGameList(rootDoc, gameEntries, files)
@@ -156,9 +160,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Dynamically builds the UI list of games
-     */
     private fun populateGameList(rootDoc: DocumentFile, games: List<GameEntry>, allFiles: Array<DocumentFile>) {
         gamesListContainer.removeAllViews()
 
@@ -172,50 +173,38 @@ class MainActivity : AppCompatActivity() {
             gamesListContainer.addView(emptyView)
             return
         }
+        
+        convertAllButton.visibility = View.VISIBLE
 
         for (game in games) {
-            // 1. The Box (Card)
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(32, 32, 32, 32) // More padding inside the box
-                setBackgroundColor(Color.parseColor("#252525")) // Dark Grey background
-                
-                // Add margin (gap) between boxes to make them easier to distinguish
+                setPadding(32, 32, 32, 32)
+                setBackgroundColor(Color.parseColor("#252525"))
                 val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                params.setMargins(0, 0, 0, 16) // 16px gap at the bottom
+                params.setMargins(0, 0, 0, 16)
                 layoutParams = params
             }
 
-            // 2. The Title Text
             val titleView = TextView(this).apply {
-                // If converted, show a checkmark, otherwise just the name
                 text = if (game.isConverted) "✓ ${game.name}" else game.name
-                
-                // SMALLER FONT (Easier to read long titles)
-                textSize = 16f 
-                
-                // Green if converted, White if new
+                textSize = 16f
                 setTextColor(if (game.isConverted) Color.parseColor("#00FF00") else Color.WHITE)
             }
 
-            // 3. The Status Text (Subtitle)
             val statusView = TextView(this).apply {
                 text = if (game.isConverted) "Status: Already Converted" else "Status: Ready"
-                textSize = 12f // Keep small
+                textSize = 12f
                 setTextColor(Color.LTGRAY)
-                setPadding(0, 8, 0, 24) // Spacing below title
+                setPadding(0, 8, 0, 24)
             }
 
-            // 4. The Button
             val actionButton = Button(this).apply {
-                text = "CONVERT" // Always just say Convert
+                text = "CONVERT"
                 textSize = 14f
-                
-                // Make button darker if already done (visual hint), but keep it blue otherwise
                 val btnColor = if (game.isConverted) Color.DKGRAY else Color.parseColor("#003DA5")
                 setBackgroundColor(btnColor)
                 setTextColor(Color.WHITE)
-                
                 setOnClickListener {
                     startConversion(rootDoc, game.cueFile, allFiles)
                 }
@@ -227,36 +216,110 @@ class MainActivity : AppCompatActivity() {
             gamesListContainer.addView(row)
         }
     }
+    
+    // --- BATCH LOGIC ---
+    
+    private fun promptConvertAll() {
+        val todoList = currentGameList.filter { !it.isConverted }
+        
+        if (todoList.isEmpty()) {
+            Toast.makeText(this, "All games are already converted!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Convert All")
+            .setMessage("Ready to convert ${todoList.size} games?")
+            .setPositiveButton("Start") { _, _ ->
+                runBatchConversion(todoList)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun runBatchConversion(gamesToConvert: List<GameEntry>) {
+        val root = currentRootDoc ?: return
+        val files = currentAllFiles
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                toggleControls(false)
+            }
+
+            val vcdFolder = root.findFile("VCD") ?: root.createDirectory("VCD")
+            if (vcdFolder == null) {
+                withContext(Dispatchers.Main) {
+                     Toast.makeText(this@MainActivity, "Error creating VCD folder", Toast.LENGTH_LONG).show()
+                     toggleControls(true)
+                }
+                return@launch
+            }
+
+            var successCount = 0
+
+            for ((index, game) in gamesToConvert.withIndex()) {
+                try {
+                    withContext(Dispatchers.Main) {
+                        statusText.text = "Converting ${index + 1} of ${gamesToConvert.size}:\n${game.name}"
+                        progressBar.progress = 0
+                    }
+
+                    val rawName = game.cueFile.name?.substringBeforeLast(".") ?: "game"
+                    val baseName = rawName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val finalFileName = "${baseName}.VCD"
+
+                    val cueData = parseCueFile(game.cueFile, files)
+                    
+                    vcdFolder.findFile(finalFileName)?.delete()
+                    val outputFile = vcdFolder.createFile("application/octet-stream", finalFileName) 
+                        ?: throw Exception("File creation failed")
+
+                    contentResolver.openOutputStream(outputFile.uri)?.use { outputStream ->
+                        vcdConverter.convert(cueData, outputStream) { progress, status ->
+                             lifecycleScope.launch(Dispatchers.Main) {
+                                progressBar.progress = progress
+                                statusText.text = "Converting ${index + 1} of ${gamesToConvert.size}:\n${game.name}\n$status"
+                            }
+                        }
+                    }
+                    successCount++
+
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                toggleControls(true)
+                Toast.makeText(this@MainActivity, "Batch finished! $successCount converted.", Toast.LENGTH_LONG).show()
+                loadGamesFromFolder(root.uri) 
+            }
+        }
+    }
 
     private fun startConversion(rootDoc: DocumentFile, cueDoc: DocumentFile, allFiles: Array<DocumentFile>) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Prepare Name
                 val rawName = cueDoc.name?.substringBeforeLast(".") ?: "game"
                 val baseName = rawName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
 
-                // UI Update: Disable controls
                 withContext(Dispatchers.Main) {
                     toggleControls(false)
                     statusText.text = "Parsing CUE..."
                 }
 
-                // 1. Parse CUE
                 val cueData = parseCueFile(cueDoc, allFiles)
                 
-                // 2. Prepare Output
                 withContext(Dispatchers.Main) { statusText.text = "Creating output file..." }
                 val vcdFolder = rootDoc.findFile("VCD") ?: rootDoc.createDirectory("VCD")
                     ?: throw Exception("Could not create 'VCD' folder.")
 
                 val finalFileName = "${baseName}.VCD"
-                // Delete old file if re-converting
                 vcdFolder.findFile(finalFileName)?.delete()
                 
                 val outputFile = vcdFolder.createFile("application/octet-stream", finalFileName) 
                     ?: throw Exception("Failed to create file: $finalFileName")
 
-                // 3. Run Conversion
                 contentResolver.openOutputStream(outputFile.uri)?.use { outputStream ->
                     vcdConverter.convert(cueData, outputStream) { progress, status ->
                         lifecycleScope.launch(Dispatchers.Main) {
@@ -266,10 +329,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // Success
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@MainActivity, "Finished!", Toast.LENGTH_SHORT).show()
-                    // Refresh list to update status colors
                     loadGamesFromFolder(rootDoc.uri)
                 }
 
@@ -291,15 +352,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // Helper to lock UI during processing
     private fun toggleControls(enabled: Boolean) {
         changeFolderButton.isEnabled = enabled
+        convertAllButton.isEnabled = enabled
         progressContainer.visibility = if (enabled) View.GONE else View.VISIBLE
         
-        // Loop through list to disable/enable conversion buttons
         for (i in 0 until gamesListContainer.childCount) {
             val row = gamesListContainer.getChildAt(i) as? LinearLayout
-            // Child 2 is the button in our layout structure
             row?.getChildAt(2)?.isEnabled = enabled
         }
     }
@@ -331,7 +390,6 @@ class MainActivity : AppCompatActivity() {
                                 if (parts.size >= 3) fname = parts[1].replace("\"", "")
                             }
                             
-                            // Get simple filename and find it in the dir
                             fname = File(fname.replace('\\', '/')).name
                             val targetDoc = dirFiles.find { it.name.equals(fname, ignoreCase = true) }
                                 ?: throw Exception("BIN file missing: $fname")
