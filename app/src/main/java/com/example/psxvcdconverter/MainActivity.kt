@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     // UI Variables
     private lateinit var folderPathText: TextView
     private lateinit var changeFolderButton: Button
+    private lateinit var aboutButton: Button
     private lateinit var refreshButton: Button
     private lateinit var convertAllButton: Button
     private lateinit var gameIdCheckbox: CheckBox
@@ -63,13 +64,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        
-        // Prevent screen from sleeping
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Setup Views
         folderPathText = findViewById(R.id.folder_path_text)
         changeFolderButton = findViewById(R.id.change_folder_button)
+        aboutButton = findViewById(R.id.about_button)
         refreshButton = findViewById(R.id.refresh_button)
         convertAllButton = findViewById(R.id.convert_all_button)
         gameIdCheckbox = findViewById(R.id.checkbox_game_id)
@@ -85,6 +85,10 @@ class MainActivity : AppCompatActivity() {
             directoryPickerLauncher.launch(intent)
         }
 
+        aboutButton.setOnClickListener {
+            showAboutDialog()
+        }
+
         refreshButton.setOnClickListener {
             folderManager.getSavedFolder()?.let { loadGames(it) } 
                 ?: Toast.makeText(this, "No folder selected", Toast.LENGTH_SHORT).show()
@@ -96,25 +100,44 @@ class MainActivity : AppCompatActivity() {
         folderManager.getSavedFolder()?.let { loadGames(it) }
     }
 
+    private fun showAboutDialog() {
+        val version = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "1.0" }
+        
+        val message = """
+            Made by Plant-dc
+            Version: $version
+            
+            ⚠️ IMPORTANT WARNING:
+            This app is FREE.
+            
+            If you paid for this app, or if it has been modified/repackaged, you have been SCAMMED.
+            
+            Please download the official version.
+        """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("About PSX VCD Converter")
+            .setMessage(message)
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
     private fun loadGames(uri: Uri) {
         lifecycleScope.launch {
             val rootDoc = DocumentFile.fromTreeUri(this@MainActivity, uri) ?: return@launch
             currentRootDoc = rootDoc
             folderPathText.text = "Folder: ${rootDoc.name}"
             
-            // Clear UI
             gamesListContainer.removeAllViews()
             convertAllButton.visibility = View.GONE
             gamesListContainer.addView(TextView(this@MainActivity).apply { 
                 text = "Scanning..."; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setPadding(32,32,32,32) 
             })
 
-            // Load Data
             val games = folderManager.scanForGames(rootDoc)
             currentGameList = games
             currentAllFiles = rootDoc.listFiles()
 
-            // Build UI
             populateGameList(rootDoc, games)
         }
     }
@@ -128,7 +151,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Show "Convert All" if there are any pending games
         convertAllButton.visibility = if (games.any { it.cueFile != null && !it.isConverted }) View.VISIBLE else View.GONE
 
         for (game in games) {
@@ -137,21 +159,18 @@ class MainActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 16) }
             }
 
-            // Title
             val titleView = TextView(this).apply {
                 text = if (game.isConverted) "✓ ${game.name}" else game.name
                 textSize = 16f
                 setTextColor(if (game.isConverted) Color.parseColor("#00FF00") else Color.WHITE)
             }
 
-            // Status
             val statusView = TextView(this).apply {
                 text = if (game.cueFile == null) "Status: Source Deleted" else if (game.isConverted) "Status: Already Converted" else "Status: Ready"
                 setTextColor(if (game.cueFile == null) Color.parseColor("#FF6666") else Color.LTGRAY)
                 textSize = 12f; setPadding(0, 8, 0, 24)
             }
 
-            // Convert Button
             val btn = Button(this).apply {
                 textSize = 14f
                 if (game.cueFile == null) {
@@ -218,33 +237,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- CORE CONVERSION LOGIC (Now includes ID Scanning) ---
     private suspend fun performConversion(vcdFolder: DocumentFile, game: GameEntry, files: Array<DocumentFile>, onProgress: (Int, String) -> Unit) = withContext(Dispatchers.IO) {
         val cueDoc = game.cueFile!!
         var rawName = cueDoc.name?.substringBeforeLast(".") ?: "game"
         
-        // 1. Parse CUE
         onProgress(0, "Parsing CUE...")
         val cueData = cueParser.parse(cueDoc, files)
 
-        // 2. Scan for Game ID (If Checkbox is checked)
         if (gameIdCheckbox.isChecked) {
             onProgress(0, "Scanning for Game ID...")
             val firstBin = cueData.binUris.firstOrNull()
             val gameId = gameIdScanner.scan(firstBin)
             
-            if (gameId != null) {
-                // If ID is found (e.g. SLUS_000.00), prepend it if not already there
-                if (!rawName.contains(gameId)) {
-                    rawName = "${gameId}.${rawName}"
-                }
+            if (gameId != null && !rawName.contains(gameId)) {
+                rawName = "${gameId}.${rawName}"
             }
         }
 
-        // 3. Sanitize filename
         val baseName = rawName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         
-        // 4. Create and Write File
         val outFile = vcdFolder.findFile("${baseName}.VCD")?.apply { delete() } 
             ?: vcdFolder.createFile("application/octet-stream", "${baseName}.VCD")!!
             
@@ -255,9 +266,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleControls(enabled: Boolean) {
         changeFolderButton.isEnabled = enabled
+        aboutButton.isEnabled = enabled
         refreshButton.isEnabled = enabled
         convertAllButton.isEnabled = enabled
-        gameIdCheckbox.isEnabled = enabled // Disable checkbox during process
+        gameIdCheckbox.isEnabled = enabled
         progressContainer.visibility = if (enabled) View.GONE else View.VISIBLE
         for (i in 0 until gamesListContainer.childCount) { (gamesListContainer.getChildAt(i) as? LinearLayout)?.getChildAt(2)?.isEnabled = enabled }
     }
