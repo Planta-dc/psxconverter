@@ -1,13 +1,16 @@
 package com.example.psxvcdconverter
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -28,15 +31,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var changeFolderButton: Button
     private lateinit var refreshButton: Button
     private lateinit var convertAllButton: Button
+    private lateinit var gameIdCheckbox: CheckBox
     private lateinit var progressContainer: LinearLayout
     private lateinit var statusText: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var gamesListContainer: LinearLayout
 
-    // Helpers (Delegating logic to other files)
+    // Helpers
     private val vcdConverter by lazy { VCDConverter(contentResolver) }
     private val cueParser by lazy { CueParser(contentResolver) }
     private val folderManager by lazy { FolderManager(this) }
+    private val gameIdScanner by lazy { GameIdScanner(contentResolver) }
 
     // State
     private var currentGameList: List<GameEntry> = emptyList()
@@ -58,6 +63,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        // Prevent screen from sleeping
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Setup Views
@@ -65,11 +72,13 @@ class MainActivity : AppCompatActivity() {
         changeFolderButton = findViewById(R.id.change_folder_button)
         refreshButton = findViewById(R.id.refresh_button)
         convertAllButton = findViewById(R.id.convert_all_button)
+        gameIdCheckbox = findViewById(R.id.checkbox_game_id)
         progressContainer = findViewById(R.id.progress_container)
         statusText = findViewById(R.id.status_text)
         progressBar = findViewById(R.id.progress_bar)
         gamesListContainer = findViewById(R.id.games_list_container)
 
+        // Button Listeners
         changeFolderButton.setOnClickListener {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -83,6 +92,7 @@ class MainActivity : AppCompatActivity() {
 
         convertAllButton.setOnClickListener { promptConvertAll() }
 
+        // Auto-load saved folder
         folderManager.getSavedFolder()?.let { loadGames(it) }
     }
 
@@ -92,17 +102,19 @@ class MainActivity : AppCompatActivity() {
             currentRootDoc = rootDoc
             folderPathText.text = "Folder: ${rootDoc.name}"
             
+            // Clear UI
             gamesListContainer.removeAllViews()
             convertAllButton.visibility = View.GONE
             gamesListContainer.addView(TextView(this@MainActivity).apply { 
                 text = "Scanning..."; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setPadding(32,32,32,32) 
             })
 
-            // Fetch list from FolderManager
+            // Load Data
             val games = folderManager.scanForGames(rootDoc)
             currentGameList = games
             currentAllFiles = rootDoc.listFiles()
 
+            // Build UI
             populateGameList(rootDoc, games)
         }
     }
@@ -116,6 +128,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Show "Convert All" if there are any pending games
         convertAllButton.visibility = if (games.any { it.cueFile != null && !it.isConverted }) View.VISIBLE else View.GONE
 
         for (game in games) {
@@ -124,18 +137,21 @@ class MainActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, 16) }
             }
 
+            // Title
             val titleView = TextView(this).apply {
                 text = if (game.isConverted) "✓ ${game.name}" else game.name
                 textSize = 16f
                 setTextColor(if (game.isConverted) Color.parseColor("#00FF00") else Color.WHITE)
             }
 
+            // Status
             val statusView = TextView(this).apply {
                 text = if (game.cueFile == null) "Status: Source Deleted" else if (game.isConverted) "Status: Already Converted" else "Status: Ready"
                 setTextColor(if (game.cueFile == null) Color.parseColor("#FF6666") else Color.LTGRAY)
                 textSize = 12f; setPadding(0, 8, 0, 24)
             }
 
+            // Convert Button
             val btn = Button(this).apply {
                 textSize = 14f
                 if (game.cueFile == null) {
@@ -144,7 +160,7 @@ class MainActivity : AppCompatActivity() {
                     text = "CONVERT"
                     setBackgroundColor(if (game.isConverted) Color.DKGRAY else Color.parseColor("#003DA5"))
                     setTextColor(Color.WHITE)
-                    setOnClickListener { startConversion(rootDoc, game.cueFile, currentAllFiles) }
+                    setOnClickListener { startConversion(rootDoc, game.cueFile!!, currentAllFiles) }
                 }
             }
 
@@ -202,13 +218,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- CORE CONVERSION LOGIC (Now includes ID Scanning) ---
     private suspend fun performConversion(vcdFolder: DocumentFile, game: GameEntry, files: Array<DocumentFile>, onProgress: (Int, String) -> Unit) = withContext(Dispatchers.IO) {
         val cueDoc = game.cueFile!!
-        val rawName = cueDoc.name?.substringBeforeLast(".") ?: "game"
+        var rawName = cueDoc.name?.substringBeforeLast(".") ?: "game"
+        
+        // 1. Parse CUE
+        onProgress(0, "Parsing CUE...")
+        val cueData = cueParser.parse(cueDoc, files)
+
+        // 2. Scan for Game ID (If Checkbox is checked)
+        if (gameIdCheckbox.isChecked) {
+            onProgress(0, "Scanning for Game ID...")
+            val firstBin = cueData.binUris.firstOrNull()
+            val gameId = gameIdScanner.scan(firstBin)
+            
+            if (gameId != null) {
+                // If ID is found (e.g. SLUS_000.00), prepend it if not already there
+                if (!rawName.contains(gameId)) {
+                    rawName = "${gameId}.${rawName}"
+                }
+            }
+        }
+
+        // 3. Sanitize filename
         val baseName = rawName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         
-        val cueData = cueParser.parse(cueDoc, files)
-        
+        // 4. Create and Write File
         val outFile = vcdFolder.findFile("${baseName}.VCD")?.apply { delete() } 
             ?: vcdFolder.createFile("application/octet-stream", "${baseName}.VCD")!!
             
@@ -218,7 +254,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleControls(enabled: Boolean) {
-        changeFolderButton.isEnabled = enabled; refreshButton.isEnabled = enabled; convertAllButton.isEnabled = enabled
+        changeFolderButton.isEnabled = enabled
+        refreshButton.isEnabled = enabled
+        convertAllButton.isEnabled = enabled
+        gameIdCheckbox.isEnabled = enabled // Disable checkbox during process
         progressContainer.visibility = if (enabled) View.GONE else View.VISIBLE
         for (i in 0 until gamesListContainer.childCount) { (gamesListContainer.getChildAt(i) as? LinearLayout)?.getChildAt(2)?.isEnabled = enabled }
     }
