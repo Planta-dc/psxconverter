@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#252525">
+    android:background="#1E1E1E">
 
-    <!-- Top Bar -->
+    <!-- 1. THE TOOLBAR (Title + 3 Dots Menu) -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/my_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#252525"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:title="PSX VCD Converter"
+        app:titleTextColor="#FFFFFF"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+    <!-- 2. FOLDER SELECTION ROW -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="#000000"
+        android:background="#121212"
         android:gravity="center_vertical">
 
         <TextView
@@ -20,7 +32,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="No Folder Selected"
-            android:textColor="#FFFFFF"
+            android:textColor="#DDDDDD"
             android:textSize="14sp"
             android:maxLines="1"
             android:ellipsize="middle"/>
@@ -28,14 +40,14 @@
         <Button
             android:id="@+id/change_folder_button"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
             android:text="Change"
             android:textSize="12sp"
             android:backgroundTint="#003DA5"
             android:textColor="#FFFFFF"/>
     </LinearLayout>
 
-    <!-- Status & Progress -->
+    <!-- 3. PROGRESS BAR (Hidden by default) -->
     <LinearLayout
         android:id="@+id/progress_container"
         android:layout_width="match_parent"
@@ -64,26 +76,7 @@
             android:progressTint="#003DA5"/>
     </LinearLayout>
 
-    <!-- OPTIONS AREA -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="8dp">
-
-        <CheckBox
-            android:id="@+id/checkbox_game_id"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Rename with Game ID"
-            android:textColor="#FFFFFF"
-            android:checked="true"
-            android:buttonTint="#003DA5"/>
-    </LinearLayout>
-
-    <!-- Header Area with Buttons -->
+    <!-- 4. LIST HEADER ROW -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -96,33 +89,16 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Games Found"
-            android:textColor="#CCCCCC"
+            android:textColor="#AAAAAA"
             android:textStyle="bold"/>
 
-        <!-- ABOUT BUTTON -->
-        <Button
-            android:id="@+id/about_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:text="?"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:padding="0dp"
-            android:minWidth="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:gravity="center"
-            android:backgroundTint="#555555"
-            android:textColor="#FFFFFF"
-            android:layout_marginEnd="8dp"/>
-
-        <!-- REFRESH BUTTON -->
+        <!-- Small Refresh Button -->
         <Button
             android:id="@+id/refresh_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:text="↻"
-            android:textSize="24sp"
+            android:textSize="20sp"
             android:padding="0dp"
             android:minWidth="0dp"
             android:insetTop="0dp"
@@ -132,11 +108,11 @@
             android:textColor="#FFFFFF"
             android:layout_marginEnd="8dp"/>
 
-        <!-- CONVERT ALL BUTTON -->
+        <!-- Convert All Button -->
         <Button
             android:id="@+id/convert_all_button"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
             android:text="Convert All"
             android:textSize="12sp"
             android:backgroundTint="#007700"
@@ -144,7 +120,7 @@
             android:visibility="gone"/>
     </LinearLayout>
 
-    <!-- Scrollable List of Games -->
+    <!-- 5. GAME LIST CONTAINER -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
