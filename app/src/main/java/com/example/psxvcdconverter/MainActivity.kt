@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         val version = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "1.0" }
         AlertDialog.Builder(this)
             .setTitle("About")
-            .setMessage("PSX VCD Converter v$version\n\nCreated by Plant-dc\n\nThis app is FREE. If you paid for it, you were scammed.")
+            .setMessage("I would really appreciate it if people would refrain from sharing this app on YouTube or monetizing it in any other way.\n\nHowever, if you are going to do so, please contact me first.")
             .setPositiveButton("Close", null)
             .show()
     }
