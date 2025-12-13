@@ -64,6 +64,25 @@
             android:progressTint="#003DA5"/>
     </LinearLayout>
 
+    <!-- OPTIONS AREA -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp">
+
+        <CheckBox
+            android:id="@+id/checkbox_game_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rename with Game ID"
+            android:textColor="#FFFFFF"
+            android:checked="true"
+            android:buttonTint="#003DA5"/>
+    </LinearLayout>
+
     <!-- Header Area with Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -80,13 +99,35 @@
             android:textColor="#CCCCCC"
             android:textStyle="bold"/>
 
+        <!-- ABOUT BUTTON -->
+        <Button
+            android:id="@+id/about_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="?"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:padding="0dp"
+            android:minWidth="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:gravity="center"
+            android:backgroundTint="#555555"
+            android:textColor="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
         <!-- REFRESH BUTTON -->
         <Button
             android:id="@+id/refresh_button"
-            android:layout_width="wrap_content"
+            android:layout_width="40dp"
             android:layout_height="40dp"
             android:text="↻"
-            android:textSize="18sp"
+            android:textSize="24sp"
+            android:padding="0dp"
+            android:minWidth="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:gravity="center"
             android:backgroundTint="#444444"
             android:textColor="#FFFFFF"
             android:layout_marginEnd="8dp"/>

@@ -1,16 +1,11 @@
 package com.example.psxvcdconverter
 
 import android.content.ContentResolver
-import android.net.Uri
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-
-// Data classes to hold the parsed CUE information
-data class CueData(val binUris: List<Uri>, val tracks: Map<Int, TrackInfo>)
-data class TrackInfo(val mode: String, val indices: MutableMap<Int, Int>)
 
 class VCDConverter(private val contentResolver: ContentResolver) {
 
@@ -152,8 +147,6 @@ class VCDConverter(private val contentResolver: ContentResolver) {
             if (tNum == 1) {
                 // Track 1 standard entry
                 buf[0] = 0x41; buf[2] = bcd(tNum)
-                // Track 1 usually starts at 00:02:00 in MSF, but we use calculated values
-                // Note: Logic kept simple to match standard VCD creation tools
             } else {
                 // Subsequent tracks have +2 seconds added to their MSF time in VCD TOC
                 var sa = st + 2; var ma = mt
