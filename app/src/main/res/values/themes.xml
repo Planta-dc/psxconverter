@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Crucial part: The parent MUST be .NoActionBar -->
-    <style name="Theme.PSXVCDConverter" parent="Theme.AppCompat.Light.NoActionBar">
+    <!-- PARENT THEME: Must be 'NoActionBar' to use your own Toolbar -->
+    <style name="Theme.PSXVCDConverter" parent="Theme.AppCompat.NoActionBar">
         
-        <!-- Colors -->
-        <item name="colorPrimary">#252525</item>
-        <item name="colorPrimaryDark">#000000</item>
-        <item name="colorAccent">#003DA5</item>
+        <!-- BRAND COLORS (PSX Dark Aesthetic) -->
+        <item name="colorPrimary">#252525</item>       <!-- Dark Grey -->
+        <item name="colorPrimaryDark">#000000</item>   <!-- Black Status Bar -->
+        <item name="colorAccent">#003DA5</item>        <!-- Sony Blue -->
         
-        <!-- Text Colors -->
+        <!-- TEXT COLORS -->
+        <!-- Forces all standard text to be White -->
         <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:textColorSecondary">#CCCCCC</item> <!-- Light Grey for subtitles -->
         
-        <!-- Remove the default window background so our layout controls it -->
+        <!-- BACKGROUND -->
         <item name="android:windowBackground">#1E1E1E</item>
+        
+        <!-- DIALOGS & POPUPS -->
+        <!-- Forces the "Convert All" and "About" boxes to be Dark Grey -->
+        <item name="android:dialogTheme">@style/ThemeOverlay.AppCompat.Dark</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.AppCompat.Dark</item>
+        
+        <!-- MENU -->
+        <!-- Forces the 3-dot menu background to be Dark -->
+        <item name="actionOverflowMenuStyle">@style/DarkOverflowMenu</item>
+    </style>
+
+    <!-- Helper style for the 3-dot menu dropdown -->
+    <style name="DarkOverflowMenu" parent="Widget.AppCompat.PopupMenu.Overflow">
+        <item name="android:popupBackground">#252525</item>
     </style>
 </resources>
